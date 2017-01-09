@@ -211,7 +211,15 @@ public class PriorityConfiguration extends Descriptor<PriorityConfiguration> imp
 		if (!(item.task instanceof Job)) {
 			// Not a job generally this mean that this is a lightweight task so
 			// priority doesn't really matter - returning default priority
-			priorityCallback.addDecisionLog(0, "Queue.Item is not a Job - Assigning global default priority");
+            Queue.Task job = item.task;
+
+            JobGroup jobGroup = getJobGroup(priorityCallback, job.getName());
+            if (jobGroup != null) {
+                priorityCallback.addDecisionLog(0, "Queue.Item is not a Job - Will attempt to assign priority anyway");
+                return getPriorityForJobGroup(priorityCallback, jobGroup, item);
+            }
+
+            priorityCallback.addDecisionLog(0, "Queue.Item is not a Job - Assigning global default priority");
 			return priorityCallback.setPrioritySelection(PrioritySorterConfiguration.get().getStrategy().getDefaultPriority());
 		}
 
@@ -244,6 +252,50 @@ public class PriorityConfiguration extends Descriptor<PriorityConfiguration> imp
 		}
 		return null;
 	}
+
+    // TODO a simple jobName will not work for jobs in folders, and would be meaningless for non-Job Queue.Task’s
+    public JobGroup getJobGroup(PriorityConfigurationCallback priorityCallback, String jobName) {
+        for (JobGroup jobGroup : jobGroups) {
+            priorityCallback.addDecisionLog(0, "Evaluating JobGroup [" + jobGroup.getId() + "] ...");
+            Collection<View> views = Jenkins.getInstance().getViews();
+            nextView: for (View view : views) {
+                priorityCallback.addDecisionLog(1, "Evaluating View [" + view.getViewName() + "] ...");
+                if (view.getViewName().equals(jobGroup.getView())) {
+                    // getItem() always returns the item
+                    TopLevelItem jobItem = view.getItem(jobName);
+                    // Now check if the item is actually in the view
+                    if (view.contains(jobItem)) {
+                        // If filtering is not used use the priority
+                        // If filtering is used but the pattern is empty regard
+                        // it as a match all
+                        if (!jobGroup.isUseJobFilter() || jobGroup.getJobPattern().trim().isEmpty()) {
+                            priorityCallback.addDecisionLog(2, "Not using filter ...");
+                            return jobGroup;
+                        } else {
+                            priorityCallback.addDecisionLog(2, "Using filter ...");
+                            // So filtering is on - use the priority if there's
+                            // a match
+                            try {
+                                if (jobName.matches(jobGroup.getJobPattern())) {
+                                    priorityCallback.addDecisionLog(3, "Job is matching the filter ...");
+                                    return jobGroup;
+                                } else {
+                                    priorityCallback.addDecisionLog(3, "Job is not matching the filter ...");
+                                    continue nextView;
+                                }
+                            } catch (PatternSyntaxException e) {
+                                // If the pattern is broken treat this a non
+                                // match
+                                priorityCallback.addDecisionLog(3, " Filter has syntax error");
+                                continue nextView;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
 	
 	private boolean isJobInView(Job<?, ?> job, View view) {
 		if(view instanceof ViewGroup) {

@@ -25,6 +25,8 @@ package jenkins.advancedqueue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import jenkins.advancedqueue.jobinclusion.JobInclusionStrategy;
 import jenkins.advancedqueue.jobinclusion.strategy.ViewBasedJobInclusionStrategy;
@@ -208,7 +210,6 @@ public class JobGroup {
 		JobInclusionStrategy jobGroupStrategy = req.bindJSON(Class.class, JobInclusionStrategy.class, jsonObjectJobGroupStrategy);
 		jobGroup.setJobGroupStrategy(jobGroupStrategy);
 		jobGroup.setRunExclusive(Boolean.parseBoolean(jobGroupObject.getString("runExclusive")));
-		/*
 		jobGroup.setUseJobFilter(jobGroupObject.has("useJobFilter"));
 		if (jobGroup.isUseJobFilter()) {
 			JSONObject jsonObject = jobGroupObject.getJSONObject("useJobFilter");
@@ -220,7 +221,6 @@ public class JobGroup {
 				jobGroup.setUseJobFilter(false);
 			}
 		}
-		*/
 		//
 		jobGroup.setUsePriorityStrategies(jobGroupObject.has("usePriorityStrategies"));
 		if (jobGroup.isUsePriorityStrategies()) {
@@ -242,4 +242,32 @@ public class JobGroup {
 		}
 		return jobGroup;
 	}
+
+	/**
+	 * @return the useJobFilter
+	 */
+	public boolean isUseJobFilter() {
+		return useJobFilter;
+	}
+
+	/**
+	 * @return the jobPattern
+	 */
+	public String getJobPattern() {
+		return jobPattern;
+	}
+
+    /**
+     * @param useJobFilter the useJobFilter to set
+     */
+    public void setUseJobFilter(boolean useJobFilter) {
+        this.useJobFilter = useJobFilter;
+    }
+
+    /**
+     * @param jobPattern the jobPattern to set
+     */
+    public void setJobPattern(String jobPattern) {
+        this.jobPattern = jobPattern;
+    }
 }
